@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Seguimiento de Compromisos</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="css/style.css?v=8" />
+</head>
+<body>
+  <!-- Encabezado -->
+  <header class="topbar">
+    <h1>Seguimiento de Compromisos</h1>
+    <div class="topbar-acciones">
+      <button id="btnResumen" class="btn btn-secundario" type="button">Resumen</button>
+      <button id="btnExportar" class="btn btn-secundario" type="button">Exportar CSV</button>
+      <button id="btnImprimir" class="btn btn-secundario" type="button">Imprimir</button>
+      <button id="btnActualizar" class="btn btn-secundario" type="button">
+        <span class="icono">↻</span> Actualizar
+      </button>
+    </div>
+  </header>
+
+  <main class="contenido">
+    <!-- KPIs -->
+    <section class="kpis" id="kpis">
+      <div class="kpi kpi-pendiente">
+        <span class="kpi-num" id="kpiPendiente">0</span>
+        <span class="kpi-lbl">Pendientes</span>
+      </div>
+      <div class="kpi kpi-cumplido">
+        <span class="kpi-num" id="kpiCumplido">0</span>
+        <span class="kpi-lbl">Cumplidos</span>
+      </div>
+      <div class="kpi kpi-vencido">
+        <span class="kpi-num" id="kpiVencido">0</span>
+        <span class="kpi-lbl">Vencidos</span>
+      </div>
+    </section>
+
+    <!-- Barra de avance (% cumplido) -->
+    <section class="avance" id="avance">
+      <div class="avance-cab">
+        <span class="avance-titulo">Avance de cumplimiento</span>
+        <span class="avance-pct" id="avancePct">0%</span>
+      </div>
+      <div class="avance-barra">
+        <div class="avance-relleno" id="avanceRelleno" style="width: 0%"></div>
+      </div>
+      <span class="avance-detalle" id="avanceDetalle">0 de 0 compromisos cumplidos</span>
+    </section>
+
+    <!-- Panel de resumen por padrino / programa -->
+    <section class="resumen" id="resumen" hidden>
+      <div class="resumen-cab">
+        <div class="resumen-tabs">
+          <button class="resumen-tab activo" data-tab="padrino" type="button">Por padrino</button>
+          <button class="resumen-tab" data-tab="programa" type="button">Por proyecto</button>
+          <button class="resumen-tab" data-tab="municipio" type="button">Por municipio</button>
+        </div>
+        <button id="btnCerrarResumen" class="btn-link" type="button">Cerrar</button>
+      </div>
+      <div class="resumen-tabla-cont" id="resumenTablaCont"></div>
+    </section>
+
+    <!-- Alertas de vencimiento -->
+    <section class="alertas" id="alertas" hidden>
+      <div class="alertas-cab">
+        <span>⚠ Próximos a vencer / Vencidos sin atender</span>
+        <button id="btnToggleAlertas" class="btn-link" type="button">Ocultar</button>
+      </div>
+      <ul class="alertas-lista" id="alertasLista"></ul>
+    </section>
+
+    <!-- Filtros -->
+    <section class="filtros">
+      <select id="filtroPrograma" class="filtro"></select>
+      <select id="filtroPadrino" class="filtro"></select>
+      <select id="filtroMunicipio" class="filtro"></select>
+      <input
+        id="filtroBusqueda"
+        class="filtro filtro-busqueda"
+        type="search"
+        placeholder="Buscar compromiso, institución, sede, responsable…"
+      />
+      <button id="btnLimpiar" class="btn btn-secundario" type="button">Limpiar filtros</button>
+    </section>
+
+    <!-- Estados de carga / error -->
+    <div id="estadoCarga" class="estado-mensaje" hidden>
+      <div class="spinner"></div>
+      <p>Cargando compromisos…</p>
+    </div>
+    <div id="estadoError" class="estado-mensaje estado-error" hidden>
+      <p id="errorTexto">No se pudieron cargar los datos.</p>
+      <button id="btnReintentar" class="btn" type="button">Reintentar</button>
+    </div>
+
+    <!-- Tablero tipo Trello -->
+    <section class="tablero" id="tablero">
+      <div class="columna" data-col="pendiente">
+        <h2 class="columna-titulo">Pendiente <span class="conteo" id="contPendiente">0</span></h2>
+        <div class="columna-cuerpo" id="colPendiente" data-col="pendiente"></div>
+      </div>
+      <div class="columna" data-col="cumplido">
+        <h2 class="columna-titulo">Cumplido <span class="conteo" id="contCumplido">0</span></h2>
+        <div class="columna-cuerpo" id="colCumplido" data-col="cumplido"></div>
+      </div>
+      <div class="columna columna-vencido" data-col="vencido">
+        <h2 class="columna-titulo">Vencido <span class="conteo" id="contVencido">0</span></h2>
+        <div class="columna-cuerpo" id="colVencido" data-col="vencido"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal de detalle / edición -->
+  <div class="modal-fondo" id="modalFondo" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+      <div class="modal-cab">
+        <h2 id="modalTitulo">Detalle del compromiso</h2>
+        <button class="modal-cerrar" id="modalCerrar" type="button" aria-label="Cerrar">×</button>
+      </div>
+      <div class="modal-cuerpo" id="modalCuerpo"></div>
+      <div class="modal-pie">
+        <button class="btn btn-secundario" id="modalCancelar" type="button">Cancelar</button>
+        <button class="btn" id="modalGuardar" type="button">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Aviso (toast) -->
+  <div class="toast" id="toast" hidden></div>
+
+  <!-- Aviso de modo demostración (solo visible con ?demo=1) — pie fijo y discreto -->
+  <div class="banner-demo" id="bannerDemo" hidden>
+    Datos de ejemplo para demostración — no reflejan el avance real y no se guardan.
+  </div>
+
+  <script src="js/config.js?v=8"></script>
+  <script src="js/api.js?v=8"></script>
+  <script src="js/app.js?v=8"></script>
+</body>
+</html>
