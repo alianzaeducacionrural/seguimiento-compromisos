@@ -610,29 +610,74 @@ const OBS_PROCESO = [
   "",
 ];
 
+// Porcentaje de cumplimiento objetivo del demo. El resto se reparte
+// por igual entre pendientes y vencidos.
+const DEMO_PCT_CUMPLIDO = 0.83;
+
 function aleatorio(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// Reparte estados de forma pseudoaleatoria sobre los datos cargados, SOLO en memoria.
-// Mezcla aproximada: ~70% cumplidos, ~18% pendientes/en proceso, ~12% vencidos.
+function enteroAleatorio(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function mezclar(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// "aaaa-mm-dd" a partir de un Date.
+function isoDesdeFecha(f) {
+  const mm = String(f.getMonth() + 1).padStart(2, "0");
+  const dd = String(f.getDate()).padStart(2, "0");
+  return `${f.getFullYear()}-${mm}-${dd}`;
+}
+
+// Fecha relativa a hoy (+futuro / -pasado) en ISO.
+function isoRelativoAHoy(dias) {
+  const f = hoyMedianoche();
+  f.setDate(f.getDate() + dias);
+  return isoDesdeFecha(f);
+}
+
+// Reparte estados sobre los datos cargados, SOLO en memoria.
+// Reparto exacto: 83% cumplidos, y el resto mitad pendientes / mitad vencidos.
+// Ajusta también la fechaVerif para que cada columna sea coherente:
+// un pendiente no puede tener la fecha de verificación ya pasada.
 function aplicarDatosDemo() {
-  compromisos.forEach((c) => {
-    const r = Math.random();
-    if (r < 0.70) {
-      c.estado = "cumplido";
+  const total = compromisos.length;
+  const nCumplido = Math.round(total * DEMO_PCT_CUMPLIDO);
+  const resto = total - nCumplido;
+  const nPendiente = Math.floor(resto / 2); // el remanente queda en vencidos
+
+  mezclar(compromisos).forEach((c, i) => {
+    if (i < nCumplido) {
+      // Cumplido: se conserva su fecha real (ya se verificó).
       c.estadoInicial = "Cumplido";
       c.observaciones = aleatorio(OBS_CUMPLIDO);
-    } else if (r < 0.88) {
-      c.estado = "pendiente";
-      // Algunos quedan "En proceso" para mostrar ese matiz/badge.
+    } else if (i < nCumplido + nPendiente) {
+      // Pendiente: la verificación aún no llega -> fecha en el futuro.
       c.estadoInicial = Math.random() < 0.5 ? "En proceso" : "Pendiente";
       c.observaciones = aleatorio(OBS_PROCESO);
+      // ~1 de cada 3 dentro de los próximos 7 días, para alimentar las alertas.
+      c.fechaVerif =
+        Math.random() < 0.33
+          ? isoRelativoAHoy(enteroAleatorio(1, CONFIG.DIAS_ALERTA))
+          : isoRelativoAHoy(enteroAleatorio(8, 45));
     } else {
-      c.estado = "vencido";
+      // Vencido: la fecha de verificación ya pasó.
       c.estadoInicial = "Pendiente";
       c.observaciones = aleatorio(OBS_VENCIDO);
+      const dias = diasHastaVerif(c.fechaVerif);
+      if (dias === null || dias >= 0) c.fechaVerif = isoRelativoAHoy(-enteroAleatorio(1, 60));
     }
+    // El estado se deriva con la misma regla del backend -> columna coherente.
+    c.estado = calcularEstado(c.estadoInicial, c.fechaVerif);
   });
 }
 
