@@ -610,9 +610,10 @@ const OBS_PROCESO = [
   "",
 ];
 
-// Porcentaje de cumplimiento objetivo del demo. El resto se reparte
-// por igual entre pendientes y vencidos.
+// Reparto objetivo del demo. Los vencidos toman el remanente (~7%)
+// para que el total siempre cuadre.
 const DEMO_PCT_CUMPLIDO = 0.83;
+const DEMO_PCT_PENDIENTE = 0.1;
 
 function aleatorio(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -646,14 +647,13 @@ function isoRelativoAHoy(dias) {
 }
 
 // Reparte estados sobre los datos cargados, SOLO en memoria.
-// Reparto exacto: 83% cumplidos, y el resto mitad pendientes / mitad vencidos.
+// Reparto exacto: ~83% cumplidos, ~10% pendientes y ~7% vencidos.
 // Ajusta también la fechaVerif para que cada columna sea coherente:
 // un pendiente no puede tener la fecha de verificación ya pasada.
 function aplicarDatosDemo() {
   const total = compromisos.length;
   const nCumplido = Math.round(total * DEMO_PCT_CUMPLIDO);
-  const resto = total - nCumplido;
-  const nPendiente = Math.floor(resto / 2); // el remanente queda en vencidos
+  const nPendiente = Math.round(total * DEMO_PCT_PENDIENTE); // el remanente queda en vencidos
 
   mezclar(compromisos).forEach((c, i) => {
     if (i < nCumplido) {
